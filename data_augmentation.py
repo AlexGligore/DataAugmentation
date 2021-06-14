@@ -1,5 +1,5 @@
-from config_manager import ConfigLoader
-from data_augmentation_module import AugmentDataModule
+from src.config_manager import ConfigLoader
+from src.data_augmentation_module import AugmentDataModule
 
 
 class DataAugmentation(object):

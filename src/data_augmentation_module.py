@@ -1,6 +1,6 @@
 import cv2
 import os
-from augmentation_ops import GenerateDataset
+from src.augmentation_ops import GenerateDataset
 
 
 class AugmentDataModule(object):
