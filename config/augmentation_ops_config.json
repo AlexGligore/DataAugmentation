@@ -1,0 +1,24 @@
+{
+    "grayscale": false,
+    "flip": true,
+    "rotate": true,
+    "shift": true,
+    "noise": true,
+    "blur": true,
+    "rotation_values": {
+        "random_angle": false,
+        "specific_angle": null
+    },
+    "shifting_values": {
+        "min_shift": 1,
+        "max_shift": 25
+    },
+    "noise_values": {
+        "mean": 0,
+        "var": 0.1,
+        "sigma_ratio": 0.8
+    },
+    "blur_values": {
+        "sigma": 1
+    }
+}

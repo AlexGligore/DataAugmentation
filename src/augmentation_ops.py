@@ -1,82 +1,128 @@
+from scipy import ndimage
+from src.config_manager import ConfigLoader
 import numpy as np
 import random
-import scipy.ndimage
 import cv2
 import copy
 
 
-# img grayscale
-def img_grayscale(img):
-    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+class AugmentationOperations(object):
+    def __init__(self, config_name="augmentation_ops_config.json"):
+        self.config = ConfigLoader(config_name=config_name).config
+        self.available_ops = []
+        self.parameters = {}
+        self._set_available_ops()
+        self._set_parameters()
 
+    def _set_available_ops(self):
+        if self.config['grayscale'] is True:
+            self.available_ops.append(self.img_grayscale)
+        if self.config['flip'] is True:
+            self.available_ops.append(self.img_flip)
+        if self.config['rotate'] is True:
+            self.available_ops.append(self.img_rotate)
+        if self.config['shift'] is True:
+            self.available_ops.append(self.img_shift)
+        if self.config['noise'] is True:
+            self.available_ops.append(self.img_noise)
+        if self.config['blur'] is True:
+            self.available_ops.append(self.img_blur)
 
-# img flip
-def img_flip(img):
+        if len(self.available_ops) == 0:
+            raise ValueError("No operations allowed, please check config file for augmentation ops.")
 
-    flip = {
-        0: np.flip,
-        1: np.flipud,
-        2: np.fliplr
-    }
+    def _set_parameters(self):
+        self.parameters["rotation_values"] = self.config["rotation_values"]
+        self.parameters["shifting_values"] = self.config["shifting_values"]
+        self.parameters["noise_values"] = self.config["noise_values"]
+        self.parameters["blur_values"] = self.config["blur_values"]
 
-    operation = random.randint(0, 2)
-    flipped_img = flip[operation](img)
-    return flipped_img
+    # img grayscale
+    def img_grayscale(self, img):
+        return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+    # img flip
+    def img_flip(self, img):
 
-# img rotation
-def img_rotate(img):
+        flip = {
+            0: np.flip,
+            1: np.flipud,
+            2: np.fliplr
+        }
 
-    rotation = {
-        0: cv2.ROTATE_90_CLOCKWISE,
-        1: cv2.ROTATE_90_COUNTERCLOCKWISE,
-        2: cv2.ROTATE_180
-    }
+        operation = random.randint(0, 2)
+        flipped_img = flip[operation](img)
+        return flipped_img
 
-    operation = random.randint(0, 2)
-    rotated_img = cv2.rotate(img, rotation[operation])
-    return rotated_img
+    # img rotation
+    def img_rotate(self, img):
+        random_angle = self.parameters["rotation_values"]["random_angle"]
+        specific_angle = self.parameters["rotation_values"]["specific_angle"]
 
+        if random_angle is False and specific_angle is None:
+            rotation = {
+                0: cv2.ROTATE_90_CLOCKWISE,
+                1: cv2.ROTATE_90_COUNTERCLOCKWISE,
+                2: cv2.ROTATE_180
+            }
+            operation = random.randint(0, 2)
+            rotated_img = cv2.rotate(img, rotation[operation])
+        elif random_angle is True:
+            angle = random.randint(0, 360)
+            rotated_img = ndimage.rotate(img, angle)
+        elif specific_angle is not None:
+            angle = int(specific_angle)
+            rotated_img = ndimage.rotate(img, angle)
+        else:
+            print("No rotation could be done to the image, please check the parameters")
+            return img
 
-# img shifting
-def img_shift(img, min_shift=1, max_shift=25):
+        return rotated_img
 
-    # RGB img
-    if len(img.shape) == 3:
-        shift = [random.uniform(min_shift, max_shift), random.uniform(min_shift, max_shift), 0]
-        shifted_img = scipy.ndimage.shift(img, shift)
-    # Grayscale img
-    else:
-        shift = [random.uniform(min_shift, max_shift), random.uniform(min_shift, max_shift)]
-        shifted_img = scipy.ndimage.shift(img, shift)
+    # img shifting
+    def img_shift(self, img):
+        min_shift = self.parameters["shifting_values"]["min_shift"]
+        max_shift = self.parameters["shifting_values"]["max_shift"]
 
-    return shifted_img
+        # RGB img
+        if len(img.shape) == 3:
+            shift = [random.uniform(min_shift, max_shift), random.uniform(min_shift, max_shift), 0]
+            shifted_img = ndimage.shift(img, shift)
+        # Grayscale img
+        else:
+            shift = [random.uniform(min_shift, max_shift), random.uniform(min_shift, max_shift)]
+            shifted_img = ndimage.shift(img, shift)
 
+        return shifted_img
 
-# adding noise
-def img_noise(img, mean=0, var=0.1, sigma_ratio=0.8):
-    # gaussian noise
-    sigma = var**sigma_ratio
+    # adding noise
+    def img_noise(self, img):
+        mean = self.parameters["noise_values"]["mean"]
+        var = self.parameters["noise_values"]["var"]
+        sigma_ratio = self.parameters["noise_values"]["sigma_ratio"]
 
-    if len(img.shape) == 3:
-        row, col, channels = img.shape
-        gauss = np.random.normal(mean, sigma, (row, col, channels))
-        gauss = gauss.reshape(row, col, channels)
-        noisy_image = img + gauss
-    else:
-        row, col = img.shape
-        gauss = np.random.normal(mean, sigma, (row, col))
-        gauss = gauss.reshape(row, col)
-        noisy_image = img + gauss
+        # gaussian noise
+        sigma = var**sigma_ratio
 
-    return noisy_image
+        if len(img.shape) == 3:
+            row, col, channels = img.shape
+            gauss = np.random.normal(mean, sigma, (row, col, channels))
+            gauss = gauss.reshape(row, col, channels)
+            noisy_image = img + gauss
+        else:
+            row, col = img.shape
+            gauss = np.random.normal(mean, sigma, (row, col))
+            gauss = gauss.reshape(row, col)
+            noisy_image = img + gauss
 
+        return noisy_image
 
-# blurring
-def img_blur(img, sigma=1):
+    # blurring
+    def img_blur(self, img):
+        sigma = self.parameters["blur_values"]["sigma"]
 
-    blurred_img = scipy.ndimage.gaussian_filter(img, sigma=sigma)
-    return blurred_img
+        blurred_img = ndimage.gaussian_filter(img, sigma=sigma)
+        return blurred_img
 
 
 class GenerateDataset(object):
@@ -85,22 +131,15 @@ class GenerateDataset(object):
         self.save_path = save_path
         self.nr_op = nr_of_operation_per_image
         self.nr_possible_op = 5
-        self.operations = {
-            0: img_grayscale,
-            1: img_shift,
-            2: img_flip,
-            3: img_blur,
-            4: img_noise,
-            5: img_rotate
-        }
+        self.operations = AugmentationOperations()
 
     def generate_dataset(self, img, image_prefix=None, save=False):
         dataset = []
         for i in range(self.dataset_size):
             augmented_img = copy.copy(img)
             for j in range(self.nr_op):
-                operation = random.randint(0, self.nr_possible_op)
-                augmented_img = self.operations[operation](img)
+                operation = random.randint(0, len(self.operations.available_ops) - 1)
+                augmented_img = self.operations.available_ops[operation](img)
 
             if save is True:
                 if image_prefix is not None:
