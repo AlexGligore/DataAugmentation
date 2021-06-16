@@ -1,4 +1,5 @@
 from scipy import ndimage
+import skimage
 from src.config_manager import ConfigLoader
 import numpy as np
 import random
@@ -99,29 +100,23 @@ class AugmentationOperations(object):
     def img_noise(self, img):
         mean = self.parameters["noise_values"]["mean"]
         var = self.parameters["noise_values"]["var"]
-        sigma_ratio = self.parameters["noise_values"]["sigma_ratio"]
 
-        # gaussian noise
-        sigma = var**sigma_ratio
+        modes = ['gaussian', 'localvar', 'poisson', 'salt', 'pepper', 's&p', 'speckle']
+        mode = modes[random.randint(0, len(modes) - 1)]
 
-        if len(img.shape) == 3:
-            row, col, channels = img.shape
-            gauss = np.random.normal(mean, sigma, (row, col, channels))
-            gauss = gauss.reshape(row, col, channels)
-            noisy_image = img + gauss
+        if mode == 'gaussian' or mode == 'speckle':
+            noisy_img = skimage.util.random_noise(img, mean=mean, var=var)
         else:
-            row, col = img.shape
-            gauss = np.random.normal(mean, sigma, (row, col))
-            gauss = gauss.reshape(row, col)
-            noisy_image = img + gauss
+            noisy_img = skimage.util.random_noise(img)
 
-        return noisy_image
+        return (255 * noisy_img).astype(np.uint8)
 
     # blurring
     def img_blur(self, img):
         sigma = self.parameters["blur_values"]["sigma"]
 
-        blurred_img = ndimage.gaussian_filter(img, sigma=sigma)
+        blurring_value = random.uniform(0, sigma)
+        blurred_img = ndimage.gaussian_filter(img, sigma=blurring_value)
         return blurred_img
 
 
@@ -139,7 +134,7 @@ class GenerateDataset(object):
             augmented_img = copy.copy(img)
             for j in range(self.nr_op):
                 operation = random.randint(0, len(self.operations.available_ops) - 1)
-                augmented_img = self.operations.available_ops[operation](img)
+                augmented_img = self.operations.available_ops[operation](augmented_img)
 
             if save is True:
                 if image_prefix is not None:

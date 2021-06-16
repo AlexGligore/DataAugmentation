@@ -6,7 +6,7 @@
     "noise": true,
     "blur": true,
     "rotation_values": {
-        "random_angle": false,
+        "random_angle": true,
         "specific_angle": null
     },
     "shifting_values": {
@@ -15,8 +15,7 @@
     },
     "noise_values": {
         "mean": 0,
-        "var": 0.1,
-        "sigma_ratio": 0.8
+        "var": 0.01
     },
     "blur_values": {
         "sigma": 1

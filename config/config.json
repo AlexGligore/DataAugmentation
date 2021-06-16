@@ -1,5 +1,5 @@
 {
-    "save_results": false,
+    "save_results": true,
     "images_folder": "./data/originals/",
     "images_format": [".jpg", ".png"],
     "resized_images_folder": "./results/resized_images/",
